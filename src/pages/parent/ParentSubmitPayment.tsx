@@ -132,7 +132,7 @@ export default function ParentSubmitPayment() {
 
   return (
     <div className="space-y-6">
-      <PageHeader kicker="Make a payment" title="Pay for one or more children" subtitle="Pay for one or more children in one transfer. Choose what each payment is for. The school checks the transfer before it counts." />
+      <PageHeader kicker="Make a payment" title="Pay for one or more children" subtitle="Choose exactly which fees your transfer covers, check the school bank details, then submit the transfer reference. Your balance changes only after the Head Teacher confirms the money arrived." />
       <div className="stepper">
         <div className={`s ${allocations.length ? 'done' : 'on'}`}><b>{allocations.length ? '✓' : '1'}</b>Choose fees</div>
         <div className={`ln ${allocations.length ? 'done' : ''}`} />
@@ -145,7 +145,7 @@ export default function ParentSubmitPayment() {
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <form onSubmit={submit} className="space-y-6">
           <section className="card space-y-4">
-            <h2 className="text-lg font-semibold">1. Choose what to pay</h2>
+            <h2 className="text-lg font-semibold">Step 1 · Choose what this payment covers</h2>\n            <p className="text-sm text-inkMuted">Select each fee you are paying. You can pay part of a fee, but enter the amount you actually intend to pay against that fee.</p>
             {byChild.size === 0 ? (
               <Empty title="Nothing owed right now" hint="Fees waiting to be paid for your children appear here." />
             ) : [...byChild.entries()].map(([pupilId, rows]) => (
@@ -169,7 +169,7 @@ export default function ParentSubmitPayment() {
           </section>
 
           <section className="card space-y-4">
-            <h2 className="text-lg font-semibold">2. Anything else in this payment</h2>
+            <h2 className="text-lg font-semibold">Step 2 · Review any extra amount</h2>
             <div>
               <label className="label" htmlFor="adv">Advance payment for next term (₦, optional)</label>
               <input id="adv" inputMode="decimal" className="field" placeholder="e.g. 10,000" value={advanceText} onChange={(e) => setAdvanceText(e.target.value)} />
@@ -191,7 +191,7 @@ export default function ParentSubmitPayment() {
           </section>
 
           <section className="card space-y-4">
-            <h2 className="text-lg font-semibold">3. Tell the school about your transfer</h2>
+            <h2 className="text-lg font-semibold">Step 3 · Submit your transfer details</h2>\n            <p className="text-sm text-inkMuted">After sending the bank transfer, enter the reference shown by your banking app and the date you paid. The school will verify it before issuing a receipt.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div><label className="label" htmlFor="payer">Who paid</label><input id="payer" className="field" value={payer} onChange={(e) => setPayer(e.target.value)} /></div>
               <div><label className="label" htmlFor="pdate">Date you sent it</label><input id="pdate" type="date" className="field" value={date} onChange={(e) => setDate(e.target.value)} /></div>
@@ -247,7 +247,7 @@ export default function ParentSubmitPayment() {
           )}
 
           <button type="button" className="btn-primary w-full" disabled={busy || total <= 0} onClick={(e) => submit(e as unknown as FormEvent)}>
-            {busy ? 'Sending…' : `I have made this transfer · ${formatNaira(total)}`}
+            {busy ? 'Sending…' : `Submit transfer for verification · ${formatNaira(total)}`}
           </button>
         </aside>
       </div>
