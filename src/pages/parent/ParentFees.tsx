@@ -1,4 +1,5 @@
 import { linkedListeners } from '../../services/parentListeners';
+import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query, where, type Unsubscribe } from 'firebase/firestore';
 import { db, auth, firebaseConfigured } from '../../lib/firebase';
@@ -35,7 +36,7 @@ export default function ParentFees() {
 
   return (
     <>
-      <PageHeader title="Fees & Balances" subtitle="Fees for your approved children. Pending payments are shown separately and are not yet counted." />
+      <PageHeader title="Fees & Balances" subtitle="See what is owed for each child. A transfer only changes the official balance after the school confirms it." actions={<Link className="btn-secondary" to="/parent/submit">Make a payment</Link>} />
       {loading ? <Loading /> : myPupils.length === 0 ? (
         <Empty title="No approved children yet" hint="Once the head teacher approves a child, their fees appear here." />
       ) : myPupils.map((p) => {
