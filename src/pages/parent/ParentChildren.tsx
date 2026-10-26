@@ -35,7 +35,7 @@ export default function ParentChildren() {
 
   return (
     <>
-      <PageHeader title="My Children" subtitle="Pupils the school has approved for your account." />
+      <PageHeader title="My Children" subtitle="Your family’s school records, in one place. Only children approved for your account appear here." />
       {message && <div className="mb-4"><Notice kind={message.kind}>{message.text}</Notice></div>}
       {links === null || pupils === null ? <Loading /> : myPupils.length === 0 ? (
         <Empty title="No approved pupils yet" hint="Add your child below. The head teacher will review the request before you can see their fees." />
