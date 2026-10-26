@@ -1,0 +1,397 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && profile().role == 'admin';
+    }
+
+    function isParent() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && profile().role == 'parent';
+    }
+
+    // An approved, non-revoked link between this parent and a pupil.
+    function linkedToPupil(pupilId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/parentLinks/$(request.auth.uid + '_' + pupilId))
+        && get(/databases/$(database)/documents/parentLinks/$(request.auth.uid + '_' + pupilId)).data.status == 'approved';
+    }
+
+    function validKobo(v) {
+      return v is int && v > 0;
+    }
+
+    // ---------- users ----------
+    // A user may read their own profile. Admins may read all profiles.
+    // Creating a profile is allowed ONLY as a parent. Nobody can self-assign admin.
+    // Role and uid can never be changed by the user.
+    // Teacher invitations: written by the head teacher when a teacher is added. Keyed by email.
+    match /teacherInvites/{email} {
+      allow read, write: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+
+      // An invited teacher signs up with the email the head teacher entered. The profile is created as an approved teacher,
+      // and the teaching rights must match the invitation exactly.
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'teacher'
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && exists(/databases/$(database)/documents/teacherInvites/$(request.auth.token.email))
+        && request.resource.data.teaching == get(/databases/$(database)/documents/teacherInvites/$(request.auth.token.email)).data.teaching
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'createdAt', 'teaching']);
+
+      // Self-registration: parent role only, own uid, own email.
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'parent'
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'createdAt', 'requestedRole', 'requestStatus'])
+        // A request is either absent, or a pending teacher request. Role itself is always 'parent' at sign-up.
+        && (request.resource.data.get('requestedRole', null) == null
+            ? request.resource.data.get('requestStatus', null) == null
+            : (request.resource.data.requestedRole in ['teacher'] && request.resource.data.requestStatus == 'pending'));
+
+      // Users may edit only their display name. Role and uid are immutable for them.
+      // Admins may change another user's role (used for controlled admin grants).
+      allow update: if signedIn()
+        && (
+          (request.auth.uid == uid
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.email == resource.data.email
+            && request.resource.data.get('requestStatus', null) == resource.data.get('requestStatus', null)
+            && request.resource.data.get('requestedRole', null) == resource.data.get('requestedRole', null)
+            && request.resource.data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'createdAt', 'requestedRole', 'requestStatus']))
+          ||
+          (isAdmin() && request.auth.uid != uid
+            && request.resource.data.role in ['admin', 'parent', 'teacher', 'staff']
+            && request.resource.data.uid == uid)
+        );
+
+      allow delete: if false;
+    }
+
+    // ---------- classes, sessions, terms, fee settings ----------
+    // Readable by any signed-in user so parents can see term names.
+    // Written only by admins.
+    function isTeacher() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && profile().role == 'teacher';
+    }
+
+    // Teaching rights come from the teacher's sign-in profile (copied there by the head teacher).
+    function teaching() {
+      return profile().get('teaching', {'classIds': [], 'subjects': []});
+    }
+    function teachesClass(classId) {
+      return isTeacher() && classId in teaching().get('classIds', []);
+    }
+    function teachesSubject(subject) {
+      return isTeacher() && subject in teaching().get('subjects', []);
+    }
+
+    // Class roster: the names of pupils in a class, readable by that class's teachers only.
+    match /classRosters/{classId} {
+      allow read: if isAdmin() || (isTeacher() && classId in teaching().get('classIds', []));
+      allow write: if isAdmin();
+    }
+
+    // Result sheets: a teacher writes marks for their own class and subject. Each correction is a new document.
+    match /resultSheets/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.teacherUid == request.auth.uid);
+      allow create: if isTeacher()
+        && request.resource.data.teacherUid == request.auth.uid
+        && request.resource.data.status == 'draft'
+        && request.resource.data.reason == null
+        && request.resource.data.submittedAt == null
+        && request.resource.data.decidedAt == null
+        && teachesClass(request.resource.data.classId)
+        && teachesSubject(request.resource.data.subject);
+      // Teacher may save a draft or send it. Nothing else about the sheet may change.
+      allow update: if (isTeacher()
+          && resource.data.teacherUid == request.auth.uid
+          && resource.data.status == 'draft'
+          && request.resource.data.status in ['draft', 'pending']
+          && request.resource.data.teacherUid == resource.data.teacherUid
+          && request.resource.data.classId == resource.data.classId
+          && request.resource.data.subject == resource.data.subject
+          && request.resource.data.termId == resource.data.termId
+          && request.resource.data.version == resource.data.version
+          && request.resource.data.reason == null)
+        // Head teacher decides a pending sheet. Rejection needs a reason.
+        || (isAdmin()
+          && resource.data.status == 'pending'
+          && request.resource.data.status in ['approved', 'rejected']
+          && request.resource.data.teacherUid == resource.data.teacherUid
+          && request.resource.data.version == resource.data.version
+          && (request.resource.data.status == 'approved'
+              || (request.resource.data.reason is string && request.resource.data.reason.size() > 0)));
+      allow delete: if false;
+    }
+
+    // Published results: the only result a parent can read. Written by the head teacher on approval.
+    match /results/{id} {
+      allow read: if isAdmin() || linkedToPupil(resource.data.pupilId);
+      allow write: if isAdmin();
+    }
+
+    // One document per pupil with every published result: a linked parent reads it with one document read.
+    match /pupilResults/{pupilId} {
+      allow read: if isAdmin() || linkedToPupil(pupilId);
+      allow write: if isAdmin();
+    }
+
+    // Behaviour stars and comments for a report card. Written by the head teacher only.
+    // Report comments and stars. A teacher writes them for their own class and sends them for review.
+    // The head teacher approves, rejects with a reason, or edits. A parent reads only approved cards.
+    match /reportExtras/{id} {
+      allow read: if isAdmin()
+        || (isTeacher() && resource.data.teacherUid == request.auth.uid)
+        || (signedIn() && resource.data.get('status', '') == 'approved' && linkedToPupil(resource.data.pupilId));
+      allow create: if isAdmin()
+        || (isTeacher() && request.resource.data.teacherUid == request.auth.uid
+            && request.resource.data.status == 'pending' && teachesClass(request.resource.data.classId));
+      allow update: if isAdmin()
+        || (isTeacher() && resource.data.teacherUid == request.auth.uid
+            && resource.data.status in ['pending', 'rejected'] && request.resource.data.status == 'pending'
+            && request.resource.data.classId == resource.data.classId
+            && request.resource.data.teacherUid == resource.data.teacherUid);
+      allow delete: if false;
+    }
+
+    // Approved history: kept for audit. Never edited or deleted.
+    match /resultVersions/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Teachers: head teacher manages; a teacher reads only their own record (matched by sign-in email).
+    match /teachers/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.email == request.auth.token.email);
+      allow write: if isAdmin();
+    }
+
+    // Teacher requests (subject or pupil). Only a signed-in teacher can create one, for their own teacher record.
+    match /teacherRequests/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.requesterUid == request.auth.uid);
+      allow create: if isTeacher()
+        && request.resource.data.requesterUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.reason == null
+        && request.resource.data.decidedAt == null
+        && request.resource.data.kind in ['subject', 'pupil']
+        && get(/databases/$(database)/documents/teachers/$(request.resource.data.teacherId)).data.email == request.auth.token.email;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /classes/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /sessions/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /terms/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---------- pupils ----------
+    // Admins manage all pupils. A parent may read only pupils they are linked to.
+    match /pupils/{pupilId} {
+      allow read: if isAdmin() || linkedToPupil(pupilId);
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ---------- parent-pupil links ----------
+    // Only admins create/revoke links. A parent can read their own links.
+    match /parentLinks/{linkId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.parentUid == request.auth.uid);
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ---------- link requests (parent-submitted) ----------
+    // A parent creates a PENDING request only, for themselves.
+    // Only admins may approve or reject.
+    match /linkRequests/{reqId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.parentUid == request.auth.uid);
+      allow create: if isParent()
+        && request.resource.data.parentUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.decidedBy == null
+        && request.resource.data.decidedAt == null
+        && request.resource.data.rejectionReason == null;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ---------- charges (fees, discounts, opening balances) ----------
+    // Historical charges are append-only. Admin creates them. Nobody edits or deletes.
+    // A parent may read charges only for pupils they are linked to.
+    // Only the running paidKobo counter may change, and only by an admin.
+    // Every other field is immutable.
+    match /charges/{chargeId} {
+      allow read: if isAdmin() || (signedIn() && linkedToPupil(resource.data.pupilId));
+      allow create: if isAdmin()
+        && validKobo(request.resource.data.amount)
+        && request.resource.data.kind in ['fee', 'discount', 'opening_balance']
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.paidKobo == 0;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paidKobo'])
+        && request.resource.data.paidKobo >= resource.data.paidKobo
+        && request.resource.data.paidKobo <= resource.data.amount;
+      allow delete: if false;
+    }
+
+    // ---------- payment submissions (parent claims) ----------
+    // A parent creates a PENDING claim for their own account only.
+    // A parent may not change status, decision fields, or allocations after creating it.
+    // A parent may read only their own claims.
+    match /paymentSubmissions/{subId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.parentUid == request.auth.uid);
+      allow create: if isParent()
+        && request.resource.data.parentUid == request.auth.uid
+        && validKobo(request.resource.data.amount)
+        && request.resource.data.status == 'pending'
+        && request.resource.data.decidedBy == null
+        && request.resource.data.decidedAt == null
+        && request.resource.data.rejectionReason == null
+        // Structural checks only. Rules cannot sum a list, so the exact total
+        // and pupil/fee matching are enforced by the approval transaction.
+        && request.resource.data.allocations is list
+        && request.resource.data.allocations.size() >= 1
+        && request.resource.data.allocations.size() <= 25
+        // Advance money is optional, never negative. A note is optional, short text.
+        && request.resource.data.get('advanceKobo', 0) is int
+        && request.resource.data.get('advanceKobo', 0) >= 0
+        // An advance must name the child it is for, and that child must be linked to this parent.
+        && (request.resource.data.get('advanceKobo', 0) == 0 || request.resource.data.get('advancePupilId', null) != null)
+        && (request.resource.data.get('advancePupilId', null) == null || linkedToPupil(request.resource.data.advancePupilId))
+        && (request.resource.data.get('note', null) == null
+            || (request.resource.data.note is string && request.resource.data.note.size() <= 500));
+      allow update: if isAdmin()
+        && request.resource.data.parentUid == resource.data.parentUid
+        && request.resource.data.amount == resource.data.amount
+        && request.resource.data.allocations == resource.data.allocations;
+      allow delete: if false;
+    }
+
+    // ---------- confirmed payments (source of truth for collections) ----------
+    // Only admins create them. Immutable afterwards.
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.get('payerUid', '') == request.auth.uid);
+      allow create: if isAdmin()
+        && request.resource.data.recordedBy == request.auth.uid
+        && ((request.resource.data.get('kind', 'payment') == 'reversal'
+              // A correction cancels an earlier payment. It is negative, names the payment, and gives a reason.
+              && request.resource.data.amount < 0
+              && request.resource.data.reversesPaymentId is string
+              && request.resource.data.reversalReason is string
+              && request.resource.data.reversalReason.size() > 0
+              && request.resource.data.keys().hasAll(['amount', 'allocations', 'reversesPaymentId', 'reversalReason']))
+           || (validKobo(request.resource.data.amount)
+              && request.resource.data.keys().hasAll(['amount', 'allocations'])
+              && (request.resource.data.get('kind', 'payment') == 'advance_application' || request.resource.data.keys().hasAll(['receiptNumber']))));
+      allow update, delete: if false;
+    }
+
+    // ---------- standard fees per class and term (admin only) ----------
+    match /classFees/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---------- receipt number counter (admin only; used inside the payment transaction) ----------
+    // School bank details: every signed-in person may read; only the head teacher may change them.
+    match /schoolSettings/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Child-level records: every linked guardian reads the same child's payments and pending transfers.
+    match /childPayments/{id} {
+      allow read: if isAdmin() || (signedIn() && linkedToPupil(resource.data.pupilId));
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+    match /childClaims/{id} {
+      allow read: if isAdmin() || (signedIn() && linkedToPupil(resource.data.pupilId));
+      allow create: if isParent()
+        && request.resource.data.parentUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && linkedToPupil(request.resource.data.pupilId);
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+    match /advanceCredits/{id} {
+      allow read: if isAdmin() || (signedIn() && (resource.data.get('payerUid', '') == request.auth.uid || linkedToPupil(resource.data.pupilId)));
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /counters/{counterId} {
+      allow read, write: if isAdmin();
+      // Statement numbers: any signed-in person may take the next number, one step at a time.
+      allow read: if counterId == 'statements' && signedIn();
+      allow create: if counterId == 'statements' && signedIn() && request.resource.data.next == 2;
+      allow update: if counterId == 'statements' && signedIn()
+        && request.resource.data.next == resource.data.next + 1
+        && request.resource.data.keys().hasOnly(['next']);
+    }
+
+    // Statements: a saved record. Admin or the linked parent may read and create; nothing can be changed.
+    match /statements/{id} {
+      allow read: if isAdmin() || (signedIn() && (resource.data.generatedBy == request.auth.uid || linkedToPupil(resource.data.pupilId)));
+      allow create: if signedIn()
+        && request.resource.data.generatedBy == request.auth.uid
+        && (isAdmin() || linkedToPupil(request.resource.data.pupilId))
+        && request.resource.data.opening is int
+        && request.resource.data.closing is int;
+      allow update, delete: if false;
+    }
+
+    // ---------- receipts (issued only with confirmed payments; append-only) ----------
+    match /receipts/{receiptId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.get('payerUid', '') == request.auth.uid);
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ---------- audit log (append-only, admin read) ----------
+    match /auditEvents/{eventId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.actorUid == request.auth.uid);
+      allow create: if isAdmin() && request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ---------- default deny ----------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
