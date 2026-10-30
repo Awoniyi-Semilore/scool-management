@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 760" role="img" aria-labelledby="title desc">
+  <title id="title">Treasure Corner</title>
+  <desc id="desc">Black and white crest with three stylized people, an open book and rising sun, a Treasure Corner banner, and the tagline Model for excellence and Godly Character.</desc>
+  <rect width="1000" height="760" fill="#fff"/>
+  <g stroke="#111" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Crest panels -->
+    <path d="M225 70 Q340 40 490 55 L455 355 Q350 370 270 350 Z" fill="#08070d" stroke-width="7"/>
+    <path d="M510 55 Q650 40 775 72 L735 350 Q625 370 470 355 Z" fill="#08070d" stroke-width="7"/>
+    <!-- Left panel: three stylized people / reaching arms -->
+    <g fill="none" stroke="#fff" stroke-width="10">
+      <circle cx="355" cy="140" r="23" fill="#fff" stroke-width="5"/>
+      <path d="M355 170 L355 245 M355 190 L310 225 L278 188 M355 190 L399 224 L432 189 M355 245 L325 300 M355 245 L385 300"/>
+      <circle cx="290" cy="205" r="16" fill="#fff" stroke-width="4"/>
+      <path d="M290 225 L300 264 M300 237 L265 220 M300 237 L326 252 M300 264 L284 300 M300 264 L320 300"/>
+      <circle cx="420" cy="205" r="16" fill="#fff" stroke-width="4"/>
+      <path d="M420 225 L410 264 M410 237 L384 252 M410 237 L445 220 M410 264 L390 300 M410 264 L426 300"/>
+    </g>
+    <!-- Right panel: rays, sun and open book -->
+    <g stroke="#fff" fill="none" stroke-width="8">
+      <path d="M570 195 L550 168 M592 177 L582 143 M620 169 L620 132 M648 177 L660 143 M670 195 L691 168 M548 215 L525 207 M692 215 L715 207"/>
+      <path d="M575 205 Q620 166 665 205"/>
+    </g>
+    <circle cx="620" cy="207" r="22" fill="#fff" stroke="none"/>
+    <path d="M620 192 l5 8 9 1 -7 6 2 9 -9 -5 -8 5 2 -9 -7 -6 9 -1z" fill="#111" stroke="none"/>
+    <path d="M535 222 L610 252 L610 320 L535 291 Z M705 222 L630 252 L630 320 L705 291 Z" fill="#fff" stroke="#fff" stroke-width="5"/>
+    <path d="M620 252 L620 322 M551 242 L593 259 M551 262 L593 279 M650 259 L690 242 M650 279 L690 262" stroke="#111" stroke-width="4" fill="none"/>
+    <text x="572" y="281" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111" stroke="none" text-anchor="middle">T</text>
+    <text x="668" y="281" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111" stroke="none" text-anchor="middle">C</text>
+    <path d="M525 329 L715 329" stroke="#fff" stroke-width="7"/>
+    <!-- Banner tails -->
+    <path d="M220 390 L115 365 L150 425 L115 490 L222 470 L248 435 Z" fill="#08070d" stroke-width="7"/>
+    <path d="M780 390 L885 365 L850 425 L885 490 L778 470 L752 435 Z" fill="#08070d" stroke-width="7"/>
+    <path d="M225 385 Q500 330 775 385 L730 510 Q500 555 270 510 Z" fill="#08070d" stroke="#fff" stroke-width="9"/>
+    <path d="M238 390 Q500 345 762 390 L720 500 Q500 538 280 500 Z" fill="none" stroke="#fff" stroke-width="3"/>
+  </g>
+  <text x="500" y="455" text-anchor="middle" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="700" letter-spacing="-1">Treasure Corner</text>
+  <text x="500" y="610" text-anchor="middle" fill="#777" font-family="Arial, Helvetica, sans-serif" font-size="35" font-style="italic">Model for excellence &amp; Godly Character</text>
+</svg>

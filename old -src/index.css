@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Brand palette as RGB triplets so Tailwind can apply opacity. */
+:root {
+  /* v3 palette: plum and violet for brand, lilac and mist for soft surfaces */
+  --brand-50: 244 240 255;
+  --brand-100: 236 230 255;
+  --brand-200: 201 182 255;
+  --brand-500: 109 63 216;
+  --brand-600: 109 63 216;
+  --brand-700: 90 40 190;
+  --brand-900: 42 20 89;
+  --surface: 255 255 255;
+  --surface-alt: 247 245 252;
+  --ink: 29 21 48;
+  --ink-muted: 107 98 129;
+  --line: 230 222 247;
+}
+
+.dark {
+  --brand-50: 26 17 48;
+  --brand-100: 42 27 78;
+  --brand-200: 75 58 122;
+  --brand-500: 165 139 255;
+  --brand-600: 165 139 255;
+  --brand-700: 201 182 255;
+  --brand-900: 237 233 255;
+  --surface: 27 19 50;
+  --surface-alt: 15 10 29;
+  --ink: 243 238 255;
+  --ink-muted: 184 172 207;
+  --line: 51 39 90;
+}
+
+html, body, #root { min-height: 100%; }
+h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; letter-spacing: -0.01em; }
+
+body {
+  @apply bg-surfaceAlt text-ink antialiased;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+:focus-visible {
+  outline: 3px solid rgb(var(--brand-500));
+  outline-offset: 2px;
+}
+
+.btn {
+  @apply inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[14px] px-5 py-2.5 text-sm font-bold transition duration-150 hover:-translate-y-px hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50;
+}
+.btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+.btn-secondary { @apply btn border border-line bg-surface text-ink hover:bg-brand-50; }
+.btn-danger { @apply btn bg-red-700 text-white hover:bg-red-800; }
+
+.field {
+  @apply w-full rounded-[14px] border-2 border-line bg-surface px-4 py-3 text-base text-ink placeholder:text-inkMuted focus:border-brand-500 focus:outline-none;
+}
+.label { @apply mb-1 block text-sm font-medium text-ink; }
+.card { @apply rounded-[22px] border border-line bg-surface p-6 shadow-[0_20px_50px_-30px_rgba(26,11,46,0.35)]; }
+.hero { @apply relative overflow-hidden rounded-[28px] p-8 text-white shadow-[0_20px_50px_-20px_rgba(26,11,46,0.5)]; background: radial-gradient(900px 300px at 10% -20%, rgba(201,182,255,0.55), transparent 60%), radial-gradient(700px 300px at 100% 120%, rgba(109,63,216,0.9), transparent 60%), linear-gradient(135deg, #2a1459, #1a0b2e 70%); }
+.kicker { @apply text-xs font-bold uppercase tracking-[0.14em]; }
+.section-label { @apply text-xs font-bold uppercase tracking-[0.08em] text-inkMuted; }
+.chip { @apply inline-block rounded-lg bg-brand-50 px-2.5 py-1 text-sm font-semibold text-brand-700; }
+.tag { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold; }
+.t-good { @apply bg-emerald-100 text-emerald-800; }
+.t-warn { @apply bg-amber-100 text-amber-900; }
+.t-bad { @apply bg-rose-100 text-rose-900; }
+.t-info { @apply bg-brand-50 text-brand-700; }
+.note-card { @apply rounded-2xl border-l-4 border-brand-600 bg-brand-50 p-4 text-sm text-ink; }
+.table-wrap { @apply overflow-x-auto rounded-xl border border-line bg-surface; }
+
+@media print {
+  body * { visibility: hidden !important; }
+  #report-print, #report-print * { visibility: visible !important; }
+  #report-print { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
+}
+
+/* v3: stars are gold */
+.stars .on, .text-amber-400 { color: #ffb300; }
+
+.tour-highlight { outline: 3px solid #6d3fd8; outline-offset: 3px; border-radius: 14px; box-shadow: 0 0 0 6px rgba(109,63,216,0.18); }
+
+/* ---- v3 components (values from the approved mockup) ---- */
+.table { @apply w-full border-separate text-left; border-spacing: 0 8px; }
+.table th { @apply px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-inkMuted; }
+.table td { @apply border-y border-line bg-surface px-3.5 py-3.5 text-[0.98rem]; }
+.table td:first-child { @apply rounded-l-2xl border-l; }
+.table td:last-child { @apply rounded-r-2xl border-r; }
+.table tbody tr { @apply transition-transform duration-150; }
+.table tbody tr:hover td { @apply bg-brand-50; }
+.metric { @apply font-serif text-[2.1rem] font-bold leading-tight text-brand-900; }
+.metric-sub { @apply text-sm text-inkMuted; }
+.class-tabs { @apply flex flex-wrap gap-2.5; }
+.class-tabs > button { @apply min-h-[44px] rounded-full bg-surface px-4 text-sm font-semibold text-ink shadow-[inset_0_0_0_2px_var(--line)]; }
+.class-tabs > button[aria-pressed="true"] { @apply bg-brand-600 text-white shadow-none; }
+.stepper { @apply mb-5 flex items-center; }
+.stepper .s { @apply flex items-center gap-2.5 text-sm font-bold text-inkMuted; }
+.stepper .s b { @apply grid h-10 w-10 place-items-center rounded-full bg-surface text-ink shadow-[inset_0_0_0_2px_var(--line)]; }
+.stepper .s.on { @apply text-ink; }
+.stepper .s.on b { @apply bg-brand-600 text-white shadow-none; }
+.stepper .s.done b { @apply bg-emerald-600 text-white shadow-none; }
+.stepper .ln { @apply mx-3 h-[3px] flex-1 rounded-full bg-line; }
+.stepper .ln.done { @apply bg-emerald-600; }
+.ftile { @apply flex cursor-pointer items-center gap-3.5 rounded-2xl bg-surface p-4 shadow-[inset_0_0_0_2px_var(--line)]; }
+.ftile.sel { @apply bg-brand-50 shadow-[inset_0_0_0_3px_var(--brand-600)]; }
+.ftile .amt { @apply ml-auto font-serif text-lg font-bold; }
+.bankcard { @apply relative overflow-hidden rounded-[26px] p-7 text-white shadow-[0_20px_50px_-20px_rgba(26,11,46,0.5)]; background: linear-gradient(135deg, #6d3fd8, #2a1459); }
+.bankcard .lab { @apply text-xs font-bold uppercase tracking-[0.14em] opacity-80; }
+.bankcard .acc { @apply my-1.5 font-mono text-[2rem] font-bold tracking-[0.12em]; }
+.track { @apply mt-4 grid grid-cols-4 gap-2.5 text-center text-sm; }
+.track i { @apply mb-2 block h-2 rounded-full bg-line; }
+.track .on i { @apply bg-brand-600; }
+.track .done i { @apply bg-emerald-600; }
+.report-band { @apply flex items-center gap-4 bg-gradient-to-r from-[#2a1459] to-[#6d3fd8] px-7 py-6 text-white; }
+.report-band p { @apply mt-1 text-sm opacity-85; }
+.photo-box { @apply grid h-28 w-24 place-items-center rounded-2xl border-2 border-dashed border-white/70 p-1.5 text-center text-xs; }
+.todo { @apply mb-3 flex items-center gap-4 rounded-[18px] bg-brand-50 p-4 transition-transform duration-200 hover:translate-x-1; }
+.todo .ico { @apply grid h-12 w-12 flex-none place-items-center rounded-2xl bg-brand-600 text-lg text-white; }
+.todo .t { @apply font-bold; }
+.todo .s { @apply text-sm text-inkMuted; }
+.checkrow { @apply flex items-start gap-3 text-sm; }
+.checkrow input { @apply mt-1 h-5 w-5 accent-[#6d3fd8]; }
